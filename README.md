@@ -152,7 +152,20 @@ Soporta ambos transportes MCP:
 
 ## Deploy
 
-🚧 URL pública disponible próximamente.
+El servidor está disponible en:
+https://mcp-health-server.onrender.com/mcp
+
+Agregá al agente con esta configuración:
+
+```json
+{
+  "mcpServers": {
+    "mcp-health": {
+      "url": "https://mcp-health-server.onrender.com/mcp"
+    }
+  }
+}
+```
 
 ---
 
