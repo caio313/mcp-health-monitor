@@ -6,11 +6,26 @@ el estado real de su ecosistema en tiempo real.
 
 ---
 
+## El problema que resuelve
+
+Los agentes IA fallan silenciosamente cuando sus herramientas fallan.
+
+```
+Agente llama a tool → tool responde lento o mal → agente toma decisión incorrecta
+                                                  → nadie sabe por qué
+```
+
+MCP Health Server le da a cualquier agente visibilidad completa
+sobre el estado de su ecosistema — antes de que fallen.
+
+---
+
 ## Tools disponibles
 
-### ✅ check_health
+### check_health
 Verifica el estado de un MCP server en tiempo real.
 Detecta latencia, disponibilidad y tools expuestas.
+Compatible con streamable-http y SSE.
 
 ```json
 check_health("https://mi-server.com/mcp")
@@ -25,7 +40,7 @@ check_health("https://mi-server.com/mcp")
 
 ---
 
-### ✅ get_summary
+### get_summary
 Estado de múltiples MCP servers en una sola llamada.
 Ejecuta todos los checks en paralelo.
 
@@ -46,10 +61,12 @@ get_summary([
 
 ---
 
-### ✅ check_drift
+### check_drift
 Detecta si el comportamiento de un servidor cambió
-respecto al baseline histórico. Encuentra degradación
-gradual que los alertas tradicionales pierden.
+respecto al baseline histórico.
+
+Encuentra degradación gradual que los alertas
+tradicionales de uptime nunca detectan.
 
 ```json
 check_drift("https://mi-server.com/mcp", baseline_days=7)
@@ -64,9 +81,10 @@ check_drift("https://mi-server.com/mcp", baseline_days=7)
 
 ---
 
-### ✅ calculate_blast_radius
+### calculate_blast_radius
 Calcula el impacto en cascada si un servicio específico cae.
-Muestra qué otros servicios se ven afectados directa e indirectamente.
+Muestra qué otros servicios se ven afectados directa
+e indirectamente.
 
 ```json
 calculate_blast_radius(
@@ -84,78 +102,7 @@ calculate_blast_radius(
 
 ---
 
-## 🚧 Tools en desarrollo
-
-| Tool | Descripción |
-|---|---|
-| `analyze_dependencies` | Grafo de dependencias entre servicios |
-| `find_critical_paths` | Servicios más críticos del ecosistema |
-| `validate_schema` | Valida que un tool cumple su schema declarado |
-| `diff_schemas` | Detecta breaking changes entre versiones |
-| `get_drift_report` | Reporte histórico de estabilidad |
-
----
-
-## Setup local
-
-```bash
-# 1. Clonar el repositorio
-git clone https://github.com/tu-usuario/mcp-health-server
-cd mcp-health-server
-
-# 2. Crear entorno virtual e instalar dependencias
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-
-# 3. Inicializar base de datos
-python -c "import asyncio; from core.db import init_db; asyncio.run(init_db())"
-
-# 4. Correr el servidor
-python main.py
-# Disponible en: http://localhost:8000/mcp
-```
-
----
-
 ## Conectar a tu agente
-
-```json
-{
-  "mcpServers": {
-    "mcp-health": {
-      "url": "http://localhost:8000/mcp"
-    }
-  }
-}
-```
-
----
-
-## Compatibilidad
-
-Soporta ambos transportes MCP:
-- `streamable-http` (estándar actual)
-- `SSE` (Server-Sent Events)
-
----
-
-## Pricing
-
-| Plan | Precio | Límite |
-|---|---|---|
-| **Free** | $0 | 5 servers, 100 checks/día |
-| **Builder** | $19/mes | 20 servers, 10k checks/día |
-| **Team** | $49/mes | Ilimitado + alertas por email |
-
----
-
-## Deploy
-
-El servidor está disponible en:
-https://mcp-health-server.onrender.com/mcp
-
-Agregá al agente con esta configuración:
 
 ```json
 {
@@ -169,24 +116,54 @@ Agregá al agente con esta configuración:
 
 ---
 
+## Setup local
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/caio313/mcp-health-server
+cd mcp-health-server
+
+# 2. Crear entorno virtual e instalar dependencias
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Configurar variables de entorno
+cp .env.example .env
+# Editá .env con tu DATABASE_URL
+
+# 4. Inicializar base de datos
+python -c "import asyncio; from core.db import init_db; asyncio.run(init_db())"
+
+# 5. Correr el servidor
+python main.py
+# Disponible en: http://localhost:8000/mcp
+```
+
+---
+
+## Compatibilidad de protocolos
+
+Soporta ambos transportes MCP sin configuración adicional:
+- `streamable-http` — estándar actual
+- `SSE` — Server-Sent Events
+
+---
+
 ## Skill para agentes IA
 
 Incluye un SKILL.md optimizado para Claude y OpenCode
 que orquesta las tools automáticamente según el contexto.
-
-En lugar de llamar tools una por una, el agente entiende
-situaciones como "algo anda lento" y ejecuta el flujo
-correcto automáticamente.
 
 Para activarlo en OpenCode copiá SKILL.md a:
 ~/.config/opencode/skills/mcp-health.md
 
 ---
 
-## Stack
+## Pricing
 
-- Python 3.11+
-- FastMCP
-- FastAPI + Uvicorn
-- PostgreSQL via Supabase (histórico de métricas)
-- httpx (HTTP async)
+| Plan | Precio | Límite |
+|---|---|---|
+| **Free** | $0 | 20 servers, checks ilimitados |
+| **Pro** | $19/mes | 50 servers + alertas por email |
+| **Team** | $49/mes | Ilimitado + SLA + soporte |
