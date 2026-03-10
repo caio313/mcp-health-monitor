@@ -164,6 +164,6 @@ Para activarlo en OpenCode copiá SKILL.md a:
 
 | Plan | Precio | Límite |
 |---|---|---|
-| **Free** | $0 | 20 servers, checks ilimitados |
-| **Pro** | $19/mes | 50 servers + alertas por email |
-| **Team** | $49/mes | Ilimitado + SLA + soporte |
+| **Free** | $0 | 100 checks/día |
+| **Builder** | $19/mes | 10.000 checks/día |
+| **Team** | $49/mes | Ilimitado + alertas email |
