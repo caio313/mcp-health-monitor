@@ -12,13 +12,27 @@ import asyncpg
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta
+import secrets
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
+from typing import Optional
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 ANONYMIZE = os.getenv("ANONYMIZE_URLS", "true").lower() == "true"
+
+
+PLAN_LIMITS = {
+    "free": 100,
+    "builder": 10000,
+    "team": None
+}
+
+
+def utcnow():
+    """Retorna datetime UTC aware."""
+    return datetime.now(timezone.utc)
 
 
 def anonymize_url(url: str) -> str:
@@ -206,3 +220,109 @@ async def get_metric_history(server_url: str, days: int = 7) -> list:
         ]
     finally:
         await conn.close()
+
+
+def hash_api_key(key: str) -> str:
+    """Hash SHA-256 de la API key."""
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
+def generate_api_key() -> str:
+    """Genera una API key segura."""
+    return f"mcp_{secrets.token_urlsafe(32)}"
+
+
+async def init_api_keys_table():
+    """Crear tabla de API keys."""
+    conn = await get_connection()
+    try:
+        await conn.execute("""
+            CREATE TABLE IF NOT EXISTS api_keys (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                key_hash TEXT UNIQUE NOT NULL,
+                plan TEXT NOT NULL DEFAULT 'free',
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                is_active BOOLEAN DEFAULT true,
+                daily_checks_used INTEGER DEFAULT 0,
+                last_reset TIMESTAMPTZ DEFAULT NOW()
+            )
+        """)
+        await conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_api_keys_hash
+            ON api_keys(key_hash)
+        """)
+        print("✅ Tabla api_keys creada")
+    finally:
+        await conn.close()
+
+
+async def create_api_key(plan: str = "free") -> tuple[str, str]:
+    """
+    Crea una nueva API key.
+    Retorna: (key_plain, key_hash)
+    La key en texto plano solo se devuelve una vez.
+    """
+    key_plain = generate_api_key()
+    key_hash = hash_api_key(key_plain)
+    
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            """INSERT INTO api_keys (key_hash, plan) VALUES ($1, $2)""",
+            key_hash, plan
+        )
+        return key_plain, key_hash
+    finally:
+        await conn.close()
+
+
+async def validate_api_key(key: str) -> Optional[dict]:
+    """
+    Valida una API key.
+    Retorna el registro si es válida, None si no existe o está inactiva.
+    """
+    key_hash = hash_api_key(key)
+    
+    conn = await get_connection()
+    try:
+        row = await conn.fetchrow(
+            """SELECT id, plan, is_active, daily_checks_used, last_reset
+               FROM api_keys WHERE key_hash = $1""",
+            key_hash
+        )
+        if not row:
+            return None
+        
+        if not row["is_active"]:
+            return None
+        
+        if (utcnow() - row["last_reset"]).days >= 1:
+            await conn.execute(
+                """UPDATE api_keys SET daily_checks_used = 0, last_reset = NOW()
+                   WHERE id = $1""",
+                row["id"]
+            )
+            row = dict(row)
+            row["daily_checks_used"] = 0
+        
+        return dict(row)
+    finally:
+        await conn.close()
+
+
+async def increment_daily_usage(key_id: str):
+    """Incrementa el contador de uso diario."""
+    conn = await get_connection()
+    try:
+        await conn.execute(
+            """UPDATE api_keys SET daily_checks_used = daily_checks_used + 1
+               WHERE id = $1""",
+            key_id
+        )
+    finally:
+        await conn.close()
+
+
+async def get_rate_limit(plan: str) -> Optional[int]:
+    """Obtiene el límite de requests para un plan."""
+    return PLAN_LIMITS.get(plan)

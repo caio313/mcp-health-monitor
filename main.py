@@ -190,6 +190,9 @@ from starlette.responses import JSONResponse
 
 app = mcp.http_app()
 
+from core.auth import APIKeyAuthMiddleware
+app.add_middleware(APIKeyAuthMiddleware)
+
 
 async def health_check(request):
     return JSONResponse({"status": "ok"})
