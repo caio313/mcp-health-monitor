@@ -198,6 +198,55 @@ async def health_check(request):
 app.router.routes.append(Route("/health", health_check))
 
 
+async def internal_blast_radius(request):
+    import json
+    from tools.dependencies import map_dependencies
+
+    body = await request.json()
+    service_id = body.get("service_id")
+    service_registry = body.get("service_registry", [])
+
+    all_services = list(set([service_id] + service_registry))
+    dep_map = await map_dependencies(all_services)
+
+    directly_affected = []
+    cascade_affected = []
+
+    for edge in dep_map["edges"]:
+        if edge["to"] == service_id:
+            directly_affected.append(edge["from"])
+
+    for edge in dep_map["edges"]:
+        if edge["to"] in directly_affected and edge["from"] not in directly_affected:
+            cascade_affected.append(edge["from"])
+
+    total_affected = len(set(directly_affected + cascade_affected))
+    impact_pct = round((total_affected / max(len(service_registry), 1)) * 100, 1)
+
+    severity = (
+        "CRITICAL" if impact_pct >= 50
+        else "HIGH" if impact_pct >= 25
+        else "MEDIUM" if impact_pct >= 10
+        else "LOW"
+    )
+
+    return JSONResponse({
+        "service_id": service_id,
+        "directly_affected": directly_affected,
+        "cascade_affected": list(set(cascade_affected)),
+        "total_services_impacted": total_affected,
+        "ecosystem_impact_percent": impact_pct,
+        "severity": severity,
+        "recommendation": (
+            f"Si '{service_id}' cae, {impact_pct}% del ecosistema se ve afectado. "
+            f"{'Implementar fallback urgente.' if severity == 'CRITICAL' else 'Monitorear de cerca.'}"
+        )
+    })
+
+
+app.router.routes.append(Route("/internal/blast-radius", internal_blast_radius, methods=["POST"]))
+
+
 # ─────────────────────────────────────────
 # Entry point
 # ─────────────────────────────────────────
