@@ -13,7 +13,7 @@ from tools.blast_radius import get_blast_radius
 from tools.drift import detect_drift, get_drift_history
 
 # ─────────────────────────────────────────
-# Configuración de puerto para Railway
+# Configuración de puerto
 # ─────────────────────────────────────────
 PORT = int(os.environ.get("PORT", 8000))
 
@@ -34,7 +34,7 @@ mcp = FastMCP(
     
     Ideal para: developers que orquestan múltiples MCP servers y necesitan
     saber el estado de su ecosistema antes de tomar decisiones.
-    """
+    """,
 )
 
 
@@ -45,9 +45,9 @@ mcp = FastMCP(
 async def check_health(server_url: str) -> dict:
     """
     Verifica el estado de un MCP server en tiempo real.
-    
+
     Retorna: status, latencia, uptime 24h, último error, tools disponibles.
-    
+
     Ejemplo: check_health("https://mi-mcp-server.com/mcp")
     """
     return await check_mcp_health(server_url)
@@ -57,10 +57,10 @@ async def check_health(server_url: str) -> dict:
 async def get_summary(server_urls: list[str]) -> dict:
     """
     Resumen de estado de múltiples MCP servers de una sola vez.
-    
+
     Retorna: tabla con status de cada server, cuántos están caídos,
     cuántos degradados, y cuántos saludables.
-    
+
     Ejemplo: get_summary(["https://server-a.com/mcp", "https://server-b.com/mcp"])
     """
     return await get_health_summary(server_urls)
@@ -73,12 +73,12 @@ async def get_summary(server_urls: list[str]) -> dict:
 async def analyze_dependencies(service_list: list[str]) -> dict:
     """
     Mapea el grafo de dependencias entre MCP servers.
-    
+
     Detecta:
     - Qué servicio depende de cuál
     - Puntos únicos de falla (single points of failure)
     - Servicios circulares o con dependencias problemáticas
-    
+
     Ejemplo: analyze_dependencies(["auth-mcp", "data-mcp", "trading-mcp"])
     """
     return await map_dependencies(service_list)
@@ -88,7 +88,7 @@ async def analyze_dependencies(service_list: list[str]) -> dict:
 async def find_critical_paths(service_list: list[str]) -> dict:
     """
     Identifica los caminos críticos en el ecosistema de servicios.
-    
+
     Retorna los servicios que, si caen, generan el mayor impacto
     en cascada sobre el resto del ecosistema.
     """
@@ -102,29 +102,25 @@ async def find_critical_paths(service_list: list[str]) -> dict:
 async def validate_schema(server_url: str, tool_name: str) -> dict:
     """
     Valida que un tool MCP devuelve exactamente lo que su schema declara.
-    
+
     Detecta:
     - Campos que el schema declara pero el tool no devuelve
     - Campos extra no declarados en el schema
     - Tipos de datos incorrectos
     - Cambios de schema silenciosos (breaking changes)
-    
+
     Ejemplo: validate_schema("https://mi-server.com/mcp", "get_price")
     """
     return await validate_tool_schema(server_url, tool_name)
 
 
 @mcp.tool()
-async def diff_schemas(
-    server_url: str,
-    tool_name: str,
-    baseline_date: str
-) -> dict:
+async def diff_schemas(server_url: str, tool_name: str, baseline_date: str) -> dict:
     """
     Compara el schema actual de un tool contra un baseline histórico.
-    
+
     Útil para detectar breaking changes entre deployments.
-    
+
     Ejemplo: diff_schemas("https://server.com/mcp", "get_price", "2026-03-01")
     """
     return await compare_schemas(server_url, tool_name, baseline_date)
@@ -134,19 +130,16 @@ async def diff_schemas(
 # TOOL 4: Blast Radius
 # ─────────────────────────────────────────
 @mcp.tool()
-async def calculate_blast_radius(
-    service_id: str,
-    service_registry: list[str]
-) -> dict:
+async def calculate_blast_radius(service_id: str, service_registry: list[str]) -> dict:
     """
     Calcula el impacto en cascada si un servicio específico cae.
-    
+
     Retorna:
     - Lista de servicios afectados directamente
     - Lista de servicios afectados en cascada
     - Porcentaje del ecosistema impactado
     - Severidad: LOW / MEDIUM / HIGH / CRITICAL
-    
+
     Ejemplo: calculate_blast_radius("auth-mcp", ["data-mcp", "trading-mcp", "report-mcp"])
     """
     return await get_blast_radius(service_id, service_registry)
@@ -159,13 +152,13 @@ async def calculate_blast_radius(
 async def check_drift(server_url: str, baseline_days: int = 7) -> dict:
     """
     Detecta si el comportamiento de un MCP server cambió respecto al baseline.
-    
+
     Analiza:
     - Cambios en latencia promedio
     - Cambios en tasa de errores
     - Cambios en patrones de respuesta
     - Anomalías estadísticas vs histórico
-    
+
     Ejemplo: check_drift("https://mi-server.com/mcp", baseline_days=7)
     """
     return await detect_drift(server_url, baseline_days)
@@ -175,7 +168,7 @@ async def check_drift(server_url: str, baseline_days: int = 7) -> dict:
 async def get_drift_report(server_url: str, days: int = 30) -> dict:
     """
     Reporte completo de drift histórico de un servidor.
-    
+
     Útil para entender la estabilidad de un servicio a lo largo del tiempo
     y detectar patrones de degradación gradual.
     """
@@ -183,14 +176,24 @@ async def get_drift_report(server_url: str, days: int = 30) -> dict:
 
 
 # ─────────────────────────────────────────
-# Health check endpoint para Railway
+# Health check endpoint
 # ─────────────────────────────────────────
 from starlette.routing import Route
 from starlette.responses import JSONResponse
 
 app = mcp.http_app()
+from starlette.requests import Request
+from starlette.responses import JSONResponse
+from starlette.middleware.exceptions import ExceptionMiddleware
+
+
+@app.exception_handler(Exception)
+async def generic_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
 
 from core.auth import APIKeyAuthMiddleware
+
 app.add_middleware(APIKeyAuthMiddleware)
 
 
@@ -227,27 +230,34 @@ async def internal_blast_radius(request):
     impact_pct = round((total_affected / max(len(service_registry), 1)) * 100, 1)
 
     severity = (
-        "CRITICAL" if impact_pct >= 50
-        else "HIGH" if impact_pct >= 25
-        else "MEDIUM" if impact_pct >= 10
+        "CRITICAL"
+        if impact_pct >= 50
+        else "HIGH"
+        if impact_pct >= 25
+        else "MEDIUM"
+        if impact_pct >= 10
         else "LOW"
     )
 
-    return JSONResponse({
-        "service_id": service_id,
-        "directly_affected": directly_affected,
-        "cascade_affected": list(set(cascade_affected)),
-        "total_services_impacted": total_affected,
-        "ecosystem_impact_percent": impact_pct,
-        "severity": severity,
-        "recommendation": (
-            f"Si '{service_id}' cae, {impact_pct}% del ecosistema se ve afectado. "
-            f"{'Implementar fallback urgente.' if severity == 'CRITICAL' else 'Monitorear de cerca.'}"
-        )
-    })
+    return JSONResponse(
+        {
+            "service_id": service_id,
+            "directly_affected": directly_affected,
+            "cascade_affected": list(set(cascade_affected)),
+            "total_services_impacted": total_affected,
+            "ecosystem_impact_percent": impact_pct,
+            "severity": severity,
+            "recommendation": (
+                f"Si '{service_id}' cae, {impact_pct}% del ecosistema se ve afectado. "
+                f"{'Implementar fallback urgente.' if severity == 'CRITICAL' else 'Monitorear de cerca.'}"
+            ),
+        }
+    )
 
 
-app.router.routes.append(Route("/internal/blast-radius", internal_blast_radius, methods=["POST"]))
+app.router.routes.append(
+    Route("/internal/blast-radius", internal_blast_radius, methods=["POST"])
+)
 
 
 # ─────────────────────────────────────────
@@ -255,4 +265,5 @@ app.router.routes.append(Route("/internal/blast-radius", internal_blast_radius, 
 # ─────────────────────────────────────────
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=PORT)
