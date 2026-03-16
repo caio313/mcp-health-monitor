@@ -1,34 +1,34 @@
 # MCP Health Server
 
-Monitor de integridad para ecosistemas de MCP servers.
-Cualquier agente IA puede usar estas tools para conocer
-el estado real de su ecosistema en tiempo real.
+Integrity monitor for MCP server ecosystems.
+Any AI agent can use these tools to know
+the real state of its ecosystem in real time.
 
 ---
 
-## El problema que resuelve
+## The problem it solves
 
-Los agentes IA fallan silenciosamente cuando sus herramientas fallan.
+AI agents fail silently when their tools fail.
 
 ```
-Agente llama a tool → tool responde lento o mal → agente toma decisión incorrecta
-                                                  → nadie sabe por qué
+Agent calls tool → tool responds slowly or incorrectly → agent makes wrong decision
+                                                        → nobody knows why
 ```
 
-MCP Health Server le da a cualquier agente visibilidad completa
-sobre el estado de su ecosistema — antes de que fallen.
+MCP Health Server gives any agent full visibility
+into the state of its ecosystem — before things break.
 
 ---
 
-## Tools disponibles
+## Available tools
 
 ### check_health
-Verifica el estado de un MCP server en tiempo real.
-Detecta latencia, disponibilidad y tools expuestas.
-Compatible con streamable-http y SSE.
+Verifies the state of an MCP server in real time.
+Detects latency, availability, and exposed tools.
+Compatible with streamable-http and SSE.
 
 ```json
-check_health("https://mi-server.com/mcp")
+check_health("https://my-server.com/mcp")
 
 → {
     "status": "healthy",
@@ -41,8 +41,8 @@ check_health("https://mi-server.com/mcp")
 ---
 
 ### get_summary
-Estado de múltiples MCP servers en una sola llamada.
-Ejecuta todos los checks en paralelo.
+State of multiple MCP servers in a single call.
+Runs all checks in parallel.
 
 ```json
 get_summary([
@@ -62,14 +62,14 @@ get_summary([
 ---
 
 ### check_drift
-Detecta si el comportamiento de un servidor cambió
-respecto al baseline histórico.
+Detects whether a server's behavior has changed
+compared to its historical baseline.
 
-Encuentra degradación gradual que los alertas
-tradicionales de uptime nunca detectan.
+Finds gradual degradation that traditional
+uptime alerts never catch.
 
 ```json
-check_drift("https://mi-server.com/mcp", baseline_days=7)
+check_drift("https://my-server.com/mcp", baseline_days=7)
 
 → {
     "drift_detected": false,
@@ -82,9 +82,9 @@ check_drift("https://mi-server.com/mcp", baseline_days=7)
 ---
 
 ### calculate_blast_radius
-Calcula el impacto en cascada si un servicio específico cae.
-Muestra qué otros servicios se ven afectados directa
-e indirectamente.
+Calculates the cascade impact if a specific service goes down.
+Shows which other services are affected directly
+and indirectly.
 
 ```json
 calculate_blast_radius(
@@ -102,7 +102,7 @@ calculate_blast_radius(
 
 ---
 
-## Conectar a tu agente
+## Connect to your agent
 
 ```json
 {
@@ -116,54 +116,54 @@ calculate_blast_radius(
 
 ---
 
-## Setup local
+## Local setup
 
 ```bash
-# 1. Clonar el repositorio
+# 1. Clone the repository
 git clone https://github.com/caio313/mcp-health-server
 cd mcp-health-server
 
-# 2. Crear entorno virtual e instalar dependencias
+# 2. Create virtual environment and install dependencies
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# 3. Configurar variables de entorno
+# 3. Configure environment variables
 cp .env.example .env
-# Editá .env con tu DATABASE_URL
+# Edit .env with your DATABASE_URL
 
-# 4. Inicializar base de datos
+# 4. Initialize the database
 python -c "import asyncio; from core.db import init_db; asyncio.run(init_db())"
 
-# 5. Correr el servidor
+# 5. Run the server
 python main.py
-# Disponible en: http://localhost:8000/mcp
+# Available at: http://localhost:8000/mcp
 ```
 
 ---
 
-## Compatibilidad de protocolos
+## Protocol compatibility
 
-Soporta ambos transportes MCP sin configuración adicional:
-- `streamable-http` — estándar actual
+Supports both MCP transports with no additional configuration:
+- `streamable-http` — current standard
 - `SSE` — Server-Sent Events
 
 ---
 
-## Skill para agentes IA
+## Skill for AI agents
 
-Incluye un SKILL.md optimizado para Claude y OpenCode
-que orquesta las tools automáticamente según el contexto.
+Includes an optimized SKILL.md for Claude and OpenCode
+that orchestrates tools automatically based on context.
 
-Para activarlo en OpenCode copiá SKILL.md a:
-~/.config/opencode/skills/mcp-health.md
+To activate it in OpenCode, copy SKILL.md to:
+`~/.config/opencode/skills/mcp-health.md`
 
 ---
 
 ## Pricing
 
-| Plan | Precio | Límite |
+| Plan | Price | Limit |
 |---|---|---|
-| **Free** | $0 | 100 checks/día |
-| **Builder** | $19/mes | 10.000 checks/día |
-| **Team** | $49/mes | Ilimitado + alertas email |
+| **Free** | $0 | 100 checks/day |
+| **Builder** | $19/mo | 10,000 checks/day |
+| **Team** | $49/mo | Unlimited + email alerts |
