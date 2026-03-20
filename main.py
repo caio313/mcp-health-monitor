@@ -42,28 +42,38 @@ mcp = FastMCP(
 # TOOL 1: Health Check
 # ─────────────────────────────────────────
 @mcp.tool()
-async def check_health(server_url: str) -> dict:
+async def check_health(server_url: str, auth_headers: dict | None = None) -> dict:
     """
     Verifica el estado de un MCP server en tiempo real.
 
     Retorna: status, latencia, uptime 24h, último error, tools disponibles.
 
+    Args:
+        server_url: URL del MCP server a verificar.
+        auth_headers: Headers de autenticación opcionales para el target.
+                      Ejemplo: {"X-API-Key": "mi-key"}
+
     Ejemplo: check_health("https://mi-mcp-server.com/mcp")
+    Ejemplo con auth: check_health("https://mi-mcp-server.com/mcp", {"X-API-Key": "mi-key"})
     """
-    return await check_mcp_health(server_url)
+    return await check_mcp_health(server_url, auth_headers=auth_headers)
 
 
 @mcp.tool()
-async def get_summary(server_urls: list[str]) -> dict:
+async def get_summary(server_urls: list[str], auth_headers: dict | None = None) -> dict:
     """
     Resumen de estado de múltiples MCP servers de una sola vez.
 
     Retorna: tabla con status de cada server, cuántos están caídos,
     cuántos degradados, y cuántos saludables.
 
+    Args:
+        server_urls: Lista de URLs a verificar.
+        auth_headers: Headers de autenticación opcionales compartidos para todos los targets.
+
     Ejemplo: get_summary(["https://server-a.com/mcp", "https://server-b.com/mcp"])
     """
-    return await get_health_summary(server_urls)
+    return await get_health_summary(server_urls, auth_headers=auth_headers)
 
 
 # ─────────────────────────────────────────
